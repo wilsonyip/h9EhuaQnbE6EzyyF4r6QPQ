@@ -1,0 +1,30 @@
+{
+  "name": "abc",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "bluebird": "^3.0.6",
+    "co": "^4.6.0",
+    "fivebeans": "^1.3.1",
+    "mongodb": "^2.1.0",
+    "request": "^2.67.0"
+  },
+  "devDependencies": {
+    "eslint": "^1.10.3",
+    "eslint-config-aftership": "^1.5.3"
+  },
+  "scripts": {
+    "test": "grunt lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilsonyip/h9EhuaQnbE6EzyyF4r6QPQ.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wilsonyip/h9EhuaQnbE6EzyyF4r6QPQ/issues"
+  },
+  "homepage": "https://github.com/wilsonyip/h9EhuaQnbE6EzyyF4r6QPQ#readme"
+}
