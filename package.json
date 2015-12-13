@@ -19,7 +19,7 @@
     "load-grunt-tasks": "^3.3.0"
   },
   "scripts": {
-    "test": "grunt lint"
+    "test": "grunt"
   },
   "repository": {
     "type": "git",
