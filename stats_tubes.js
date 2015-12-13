@@ -1,19 +1,18 @@
-var fivebeans = require('fivebeans');
+'use strict';
 
-var client = new fivebeans.client('127.0.0.1', 11300);
+let fivebeans = require('fivebeans');
 
-var tubename = "h9EhuaQnbE6EzyyF4r6QPQ";
+let client = new fivebeans.client('127.0.0.1', 11300);
+
+let tubename = 'h9EhuaQnbE6EzyyF4r6QPQ';
 
 client.connect();
 
-client.list_tubes(function(err, tubes) {
-    
-    console.log(tubes);
+client.list_tubes(function (err, tubes) {
+	console.log(tubes);
 
-    client.stats_tube(tubename, function(err, response) {
-
-        console.log(response);
-        process.exit();
-    });
+	client.stats_tube(tubename, function (err2, response) {
+		console.log(response);
+		process.exit();
+	});
 });
-

@@ -1,3 +1,5 @@
+"use strict"
+
 var fivebeans   = require('fivebeans'),
     Promise     = require('bluebird'),
     co          = require('co');
