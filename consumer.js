@@ -54,7 +54,7 @@ function getCurrency(currFrom, currTo) {
 			if (!err && response.statusCode === 200) {
 				let rate = (currObj.rates[currTo] / currObj.rates[currFrom]).toFixed([2]);
 				resolve([currFrom, currTo, rate]);
-			}else {
+			} else {
 				console.log('else');
 			}
 		});
