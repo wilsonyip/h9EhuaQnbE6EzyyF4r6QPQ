@@ -1,19 +1,17 @@
 'use strict';
+const fivebeans = require('fivebeans');
 
-let fivebeans = require('fivebeans');
+const TUBENAME = 'wil';
 
-// let client = new fivebeans.client('127.0.0.1', 11300);
 let client = new fivebeans.client('challenge.aftership.net', 11300);
-
-let tubename = 'h9EhuaQnbE6EzyyF4r6QPQ';
 
 client.connect();
 
-client.list_tubes(function (listTubesErr, tubes) {
+client.list_tubes(function (list_tubes_err, tubes) {
 	console.log(tubes);
 
-	client.stats(tubename, function (statsTubeErr, response) {
+	client.stats_tube(TUBENAME, function (stats_tube_err, response) {
 		console.log(response);
-		process.exit();
+		client.quit();
 	});
 });

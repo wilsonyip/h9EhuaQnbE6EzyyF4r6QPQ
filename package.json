@@ -1,8 +1,8 @@
 {
-  "name": "abc",
+  "name": "exchange_rate_consumer_worker",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "consumer.js",
   "dependencies": {
     "bluebird": "^3.0.6",
     "co": "^4.6.0",

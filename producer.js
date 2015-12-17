@@ -1,33 +1,28 @@
 'use strict';
-let fivebeans	= require('fivebeans');
+const fivebeans	= require('fivebeans');
 
-const tubename	= 'h9EhuaQnbE6EzyyF4r6QPQ';
+const TUBENAME	= 'wil';
 
 // fivebeans client setup
-let client = new fivebeans.client('localhost', 11300);
+let client = new fivebeans.client('challenge.aftership.net', 11300);
 client.connect();
 
 // get arguments from CLI
-let numJobs	= process.argv[2];
-let currFrom	= process.argv[3];
-let currTo	= process.argv[4];
-if (numJobs === undefined) {
-	numJobs = 10;
-}
-if (currFrom === undefined) {
-	currFrom = 'HKD';
-}
-if (currTo === undefined) {
-	currTo = 'USD';
-}
+let num_jobs	= parseInt(process.argv[2], 10) || 1;
+let curr_from	= process.argv[3] || 'HKD';
+let curr_to	= process.argv[4] || 'USD';
+let count = 0;
 
-
-for (let i = 0; i < numJobs; i++) {
-	let payload = {from: currFrom, to: currTo};
-	client.use(tubename, function (clientUseErr, name) {
-		client.put(0, 0, 1, JSON.stringify(payload), function (clientPutErr, jobId) {
-			if (clientPutErr) throw clientPutErr;
-			console.log('InjectedJobId: ' + jobId + ' | Payload: ' + JSON.stringify(payload));
+for (let i = 0; i < num_jobs; i++) {
+	let payload = {from: curr_from, to: curr_to};
+	client.use(TUBENAME, function (client_use_err, name) {
+		client.put(0, 0, 60, JSON.stringify(payload), function (client_put_err, jobId) {
+			if (client_put_err) throw client_put_err;
+			console.log('Inserted JobId: ' + jobId + ', Payload: ' + JSON.stringify(payload));
+			count++;
+			if (count === num_jobs) {
+				client.quit();
+			}
 		});
 	});
 }

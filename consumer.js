@@ -1,80 +1,145 @@
 'use strict';
-let fivebeans	= require('fivebeans');
-let Promise	= require('bluebird');
-let request	= require('request');
-let mongoClient = require('mongodb').MongoClient;
+const fivebeans		= require('fivebeans');
+const Promise		= require('bluebird');
+const request		= require('request');
+const mongo_client 	= require('mongodb').MongoClient;
+const co		= require('co');
+const assert		= require('assert');
 
-let assert	= require('assert');
+// Promisify modules
+Promise.promisifyAll(fivebeans, {multiArgs: true});
+Promise.promisifyAll(request, {multiArgs: true});
 
-let tubename	= 'h9EhuaQnbE6EzyyF4r6QPQ';
-let openExchangeRatesURL = 'https://openexchangerates.org/api/latest.json?app_id=039e11b432be4216ac248605c4ab33c2';
-let mongodbURL = 'mongodb://wilsonyip:1234567890@ds027295.mongolab.com:27295/wilsonyip_challenge';
+/**
+ * @constant {string} tubename
+ * @constant {string} open exchange rates url
+ * @constant {string} mongodb url
+ */
+const TUBENAME	= 'wil';
+const OPEN_EXCHANGE_RATES_URL = 'https://openexchangerates.org/api/latest.json?app_id=039e11b432be4216ac248605c4ab33c2';
+const MONGODB_URL = 'mongodb://wilsonyip:1234567890@ds027295.mongolab.com:27295/wilsonyip_challenge';
+let succeed_attempt_target = 10;
+let succeed_attempt = 0;
+let failed_attempt_limit = 3;
+let failed_attempt = 0;
 
-// fivebeans client setup
-let client = new fivebeans.client('127.0.0.1', 11300);
-client.connect();
+// fivebeans client connection setup and main flow
+let client = new fivebeans.client('challenge.aftership.net', 11300);
+client
+.on('connect', function () {
+	getJob();
+}).on('error', function (err) {
+	// connection failure
+}).on('close', function () {
+	// underlying connection has closed
+}).connect();
 
+
+/**
+ * get and process job
+ * @function getJob
+ */
 function getJob() {
-	client.watch(tubename, function (watchErr, numWatched) {
-		console.log('numWatched: ' + numWatched);
-		client.reserve(function (reserveErr, jobId, payload) {
-			console.log('reserve');
-			console.log(jobId);
-			console.log(JSON.parse(payload));
+	co(function* () {
+		yield client.watchAsync(TUBENAME);
+		console.log('Watching tube: ' + TUBENAME);
+		let job = yield client.reserveAsync();
+		let job_id 	= job[0];
+		let payload 	= JSON.parse(job[1]);
+		let curr_from 	= payload.from;
+		let curr_to 	= payload.to;
+		console.log('Reserved a job. JobId: ' + job_id);
 
-			getCurrency(JSON.parse(payload).from, JSON.parse(payload).to)
-			.then(function (array) {
-				console.log('in getCurrency Promise');
-				// var [from, to, rate] = array;
-				let from	= array[0];
-				let to		= array[1];
-				let rate	= array[2];
-				return saveToMongo(from, to, rate);
-			}).then(function (data) {
-				console.log(data);
-				console.log('---in 2nd then');
-			}).catch(function (err) {
-				console.log(err);
-			});
+		yield client.destroyAsync(job_id);
+		console.log('JobId: ' + job_id + ' destroyed.');
 
-			client.destroy(jobId, function (err) {
-				console.log('jobId ' + jobId + ' destroyed.');
+		let rate = yield getCurrency(job_id, curr_from, curr_to);
+		console.log('Currency request succeeded.');
+
+		yield saveToMongo(job_id, curr_from, curr_to, rate);
+		console.log('Saved to Mongo successfully.');
+
+		succeed_attempt++;
+		if (succeed_attempt >= succeed_attempt_target) {
+			console.log('Succeeded 10 times. Stop this job.');
+			client.quit();
+		} else {
+			let reput_result_id = yield client.putAsync(0, 60, 60, JSON.stringify(payload));
+			console.log('Succeed. Put another job to queue. JobId: ' + reput_result_id);
+			console.log(reput_result_id);
+			getJob();
+		}
+	}).catch(function (err) {
+		console.log(err);
+		failed_attempt++;
+		console.log('main error catch');
+		// bury if failed attempt limit is met
+		if (failed_attempt < failed_attempt_limit) {
+			console.log('abc');
+			let payload = {from: err[1][1], to: err[1][2]};
+			console.log(payload);
+			client.put(0, 3, 60, JSON.stringify(payload), function (client_put_err, job_id) {
+				console.log('Failed. Reput into queue. JobId: ' + job_id + ' | Payload: ' + JSON.stringify(payload));
 				getJob();
 			});
-		});
+		} else {
+			client.bury(err[1][0], 0, function (bury_err) {
+				console.log('Failed 3 times. Bury this job.');
+				client.quit();
+			});
+		}
 	});
 }
 
-function getCurrency(currFrom, currTo) {
-	return new Promise(function (resolve, reject) {
-		request(openExchangeRatesURL, function (err, response, body) {
-			if (err) throw err;
 
-			let currObj = JSON.parse(body);
-			if (!err && response.statusCode === 200) {
-				let rate = (currObj.rates[currTo] / currObj.rates[currFrom]).toFixed([2]);
-				resolve([currFrom, currTo, rate]);
-			} else {
-				console.log('else');
+/**
+ * get Currency from https://openexchangerates.org/
+ * get a sample response by curl:
+ * curl https://openexchangerates.org/api/latest.json?app_id=039e11b432be4216ac248605c4ab33c2
+ * @function getCurrency
+ *
+ * @param {number} job_id - job id number
+ * @param {string} curr_from - exchange from this currency
+ * @param {string} curr_to - exchange to this currency
+ * @returns {Promise} if resolved: exchange rate (i.e.: currencyToRate / currencyFromRate), if rejected: [error, [job id, currency from, currency to]]
+ */
+function getCurrency(job_id, curr_from, curr_to) {
+	return new Promise(function (resolve, reject) {
+		request.getAsync(OPEN_EXCHANGE_RATES_URL)
+		.then(function (response) {
+			let currObj = JSON.parse(response[1]);
+			if (response[0].statusCode === 200) {
+				let rate = (currObj.rates[curr_to] / currObj.rates[curr_from]).toFixed([2]);
+				resolve(rate);
 			}
+		}).catch(function (request_err) {
+			console.log(request_err);
+			return reject([new Error('request_err'), [job_id, curr_from, curr_to]]);
 		});
 	});
 }
 
-function saveToMongo(currFrom, currTo, rate) {
+
+/**
+ * save retrieved exchange rate to mongodb
+ * @function saveToMongo
+ *
+ * @param {number} job_id - job id number
+ * @param {string} curr_from - exchange from this currency
+ * @param {string} curr_to - exchange to this currency
+ * @param {number} rate - exchange in 2 decimals
+ * @returns {Promise} if resolved: result object, if reject: [error, [job id, currency from, currency to]]
+ */
+function saveToMongo(job_id, curr_from, curr_to, rate) {
 	return new Promise(function (resolve, reject) {
-		mongoClient.connect(mongodbURL, function (mongoConnectErr, db) {
-			if (mongoConnectErr) throw mongoConnectErr;
+		mongo_client.connect(MONGODB_URL, function (mongo_connect_err, db) {
+			if (mongo_connect_err) return reject([mongo_connect_err, [job_id, curr_from, curr_to]]);
 
-			console.log('mongo connected');
-
-			db.collection('test').insertOne({from: currFrom, to: currTo, rate: rate, created_at: new Date()}, function (mongoInsertErr, result) {
-				assert.equal(null, mongoInsertErr);
-				console.log('rate inserted');
+			db.collection('currency_rate').insertOne({from: curr_from, to: curr_to, rate: rate, created_at: new Date()}, function (mongo_insert_err, result) {
+				if (mongo_insert_err) return reject([mongo_insert_err, [job_id, curr_from, curr_to]]);
+				assert.equal(null, mongo_insert_err);
 				resolve(result);
 			});
 		});
 	});
 }
-
-getJob();
