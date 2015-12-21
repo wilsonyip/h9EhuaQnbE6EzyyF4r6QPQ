@@ -2,7 +2,7 @@
 
 
 ##Start Consumer Worker
-######use Aftership Beanstalkd server, mongolab 'currency_rate' collection
+######use provided Beanstalkd server, mongolab 'currency_rate' collection
 * npm start
 * or (node consumer.js)
 
