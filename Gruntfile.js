@@ -6,7 +6,11 @@ module.exports = function (grunt) {
 	grunt.initConfig({
 		eslint: {
 			target: ['*.js']
+		},
+		mochaTest: {
+			src: ['test.js']
 		}
 	});
-	grunt.registerTask('default', ['eslint']);
+
+	grunt.registerTask('default', ['eslint', 'mochaTest']);
 };
