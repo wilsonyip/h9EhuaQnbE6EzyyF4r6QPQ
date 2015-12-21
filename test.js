@@ -40,7 +40,7 @@ describe('consumer worker', function () {
 		expect(rate).to.not.equal(null);
 	});
 	it('should save to mongo', function* () {
-		this.timeout(5000);
+		this.timeout(10000);
 		let job_id = 1;
 		let curr_from = 'HKD';
 		let curr_to = 'USD';
